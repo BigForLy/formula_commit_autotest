@@ -9,3 +9,8 @@
 python main.py <uin_method_ver>
 ```
 где <uin_method_ver> - например b2fdc65d-6c4e-11e7-8fb2-00ffb44a812c
+
+Необходим .env файл, пример:
+```
+MYSQL_CONNECT = "mysql://username:password@host:port/lims?charset=utf8"
+```
