@@ -37,19 +37,35 @@ def get_field(arg: Dict[str, Any]):  # static factory method
                 formula=arg.get("calculation"),
                 value="",
                 round_to=int(arg.get("round")),
+                is_required=True if arg["not_is_null"] == "True" else False,
             )
         }
     elif type_ == "field_with_string":
         return {
             arg["primary_key"]: StringField(
-                **arg, formula=arg.get("calculation"), value=""
+                **arg,
+                formula=arg.get("calculation"),
+                value="",
+                is_required=True if arg["not_is_null"] == "True" else False,
             )
         }
     elif type_ == "result_field":
-        value_field_properties = {"primary_key": arg["primary_key"]}
-        absolute_difference_properties = {"primary_key": arg["primary_key"]}
-        consistency_field_properties = {"primary_key": arg["primary_key"]}
-        infelicity_field_properties = {"primary_key": arg["primary_key"]}
+        value_field_properties = {
+            "primary_key": arg["primary_key"],
+            "is_required": False,
+        }
+        absolute_difference_properties = {
+            "primary_key": arg["primary_key"],
+            "is_required": False,
+        }
+        consistency_field_properties = {
+            "primary_key": arg["primary_key"],
+            "is_required": False,
+        }
+        infelicity_field_properties = {
+            "primary_key": arg["primary_key"],
+            "is_required": False,
+        }
 
         for name, value in arg.items():
             if name in PROPERTIES_FIELD_VALUE:
@@ -75,7 +91,7 @@ def get_field(arg: Dict[str, Any]):  # static factory method
     elif type_ == "logic":
         return {arg["primary_key"]: BoolField(**arg, value=0, formula="")}
     else:
-        raise
+        raise ValueError(f"Не найден тип {type_}")
 
 
 def get_method_fields(queryset) -> Dict[str, Any]:
@@ -98,6 +114,7 @@ def get_method_fields(queryset) -> Dict[str, Any]:
 
 def checked_func(session, probes, method_fields, uin_method_ver):
     for probe in probes:
+        assert probe.uin is not None, "probe_uin is None"
         if uin_method_ver == "b2fdc65d-6c4e-11e7-8fb2-00ffb44a812c" and probe.uin in (
             # Некорректное решение: 2.7 != 2.8 - ошибка в округлении mysql
             b"ebe23667-fa51-11eb-9f29-00155dc7502a",
@@ -113,7 +130,7 @@ def checked_func(session, probes, method_fields, uin_method_ver):
         ):
             continue
         check_values_in_probe(session, probe, method_fields, uin_method_ver)
-    print(f"Безошибочных проверок: {check_values_in_probe.n_count+1}")
+    print(f"Безошибочных проверок: {check_values_in_probe.n_count}")
 
 
 @counter
@@ -124,9 +141,9 @@ def check_values_in_probe(session, probe, method_fields, uin_method_ver):
             method_values := get_method_values(session, probe, uin_method_ver)
         ):
             field: BaseField = copy.copy(method_fields[value.uin])
-            field.definition_number = value.difinition
+            field.definition_number = value.definition
             field.value = value.value
-            field.primary_key = (field.primary_key, value.difinition)
+            field.primary_key = (field.primary_key, value.definition)
             fields.append(field)
         formula = FormulaCalculation(fields)
         results = formula.calc()
@@ -142,12 +159,12 @@ def check_values_in_probe(session, probe, method_fields, uin_method_ver):
 
 def check_fields_result(method_values, results):
     for values in method_values:
-        value = results[(values.uin, values.difinition)]
+        value = results[(values.uin, values.definition)]
         assert (
             value == values.value.replace(",", ".")
             if is_convert_str_to_float(values.value)
             else value == values.value
-        ), f"Некорректное решение: {value} != {values.value}"
+        ), f"Некорректное решение: {value} != {values.value}. Поле: {values.uin} определение: {values.definition}"
 
 
 def is_convert_str_to_float(value: str) -> bool:

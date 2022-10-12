@@ -60,7 +60,7 @@ def s_fields_values(session: Session, probe_uin: str, uin_method_ver: str):
     num_values_query = (
         session.query(
             KtSField.uin_s_field.label("uin"),
-            KtSNumOpred.num.label("difinition"),
+            KtSNumOpred.num.label("definition"),
             func.coalesce(KtSFieldValueNum.value).label("value"),
             KtField.order_by.label("order_by"),
             KtSField.common.label("common"),
@@ -80,7 +80,7 @@ def s_fields_values(session: Session, probe_uin: str, uin_method_ver: str):
     text_values_query = (
         session.query(
             KtSField.uin_s_field.label("uin"),
-            KtSNumOpred.num.label("difinition"),
+            KtSNumOpred.num.label("definition"),
             func.coalesce(KtSFieldValueText.value).label("value"),
             KtField.order_by.label("order_by"),
             KtSField.common.label("common"),
@@ -174,7 +174,7 @@ def result_fields_values(
     )
 
     query_value = session.query(
-        literal("1").label("difinition"),
+        literal("1").label("definition"),
         literal(False).label("is_common"),
         literal("result").label("block_type"),
         subquery_fields_result.c.value.label("value"),
@@ -184,7 +184,7 @@ def result_fields_values(
     )
 
     query_absolute_difference = session.query(
-        literal("1").label("difinition"),
+        literal("1").label("definition"),
         literal(False).label("is_common"),
         literal("result").label("block_type"),
         subquery_fields_result.c.lim_repeat.label("value"),
@@ -196,7 +196,7 @@ def result_fields_values(
     )
 
     query_consistency = session.query(
-        literal("1").label("difinition"),
+        literal("1").label("definition"),
         literal(False).label("is_common"),
         literal("result").label("block_type"),
         subquery_fields_result.c.abs_rasx.label("value"),
@@ -208,7 +208,7 @@ def result_fields_values(
     )
 
     query_infelicity = session.query(
-        literal("1").label("difinition"),
+        literal("1").label("definition"),
         literal(False).label("is_common"),
         literal("result").label("block_type"),
         subquery_fields_result.c.infelicity.label("value"),
