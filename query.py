@@ -245,7 +245,8 @@ def get_probe_uin_in_probe_result(
         .filter(
             expression.and_(
                 ProbeResult.uin_method_ver == uin_method_ver,
-                ProbeResult.abs_rasx.is_not(None),
+                ProbeResult.value.is_not(None),
+                ProbeResult.value != "",
             )
         )
         .order_by(Probe.probe_id.desc())
