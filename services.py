@@ -1,5 +1,6 @@
 import copy
 from typing import Any, Dict
+from decimal import Decimal
 from formula_commit import (
     FormulaCalculation,
     StringField,
@@ -20,7 +21,7 @@ from consts import (
     PROPERTIES_FIELD_INFELICITY,
     PROPERTIES_FIELD_VALUE,
 )
-from decorator import counter
+from decorator_ import counter
 
 from query import get_method_values
 
@@ -64,17 +65,23 @@ def get_field(arg: Dict[str, Any]):  # static factory method
         absolute_difference_properties = {
             "primary_key": arg["primary_key"],
             "is_required": False,
-            "is_round_with_zeros": True,
+            "is_round_with_zeros": True
+            if arg["rounding_with_zeros"] == "True"
+            else False,
         }
         consistency_field_properties = {
             "primary_key": arg["primary_key"],
             "is_required": False,
-            "is_round_with_zeros": True,
+            "is_round_with_zeros": True
+            if arg["rounding_with_zeros"] == "True"
+            else False,
         }
         infelicity_field_properties = {
             "primary_key": arg["primary_key"],
             "is_required": False,
-            "is_round_with_zeros": True,
+            "is_round_with_zeros": True
+            if arg["rounding_with_zeros"] == "True"
+            else False,
         }
 
         for name, value in arg.items():
@@ -144,7 +151,7 @@ def check_values_in_probe(session, probe, method_fields, uin_method_ver):
             field.primary_key = (field.primary_key, value.definition)
             fields.append(field)
         results = FormulaCalculation(fields).calc()
-        check_fields_result(method_values, results)
+        check_fields_result(method_values, results, fields)
     except Exception as exc:
         message = f"Ошибка в версии метода: {uin_method_ver}, проба: {probe.uin}"
         n_count_not_error_message = (
@@ -154,15 +161,26 @@ def check_values_in_probe(session, probe, method_fields, uin_method_ver):
         raise ValueError(message) from exc
 
 
-def check_fields_result(method_values, results):
-    for values in method_values:
+def check_fields_result(method_values, results, fields):
+    for i in range(len(method_values) - 1):
+        values = method_values[i]
         value = results[(values.uin, values.definition)]
         if values.value is None and value == "None":
             continue
+        # если values.value конвертируется в число
+        # то ожидаем что value тоже будет конвертировано без ошибки
+        if is_convert_str_to_float(values.value):
+            # В базе некорректно лежат значения, без округления, приходится округлять
+            db_value = round(
+                Decimal(values.value.replace(",", ".")), abs(fields[i].round_to)
+            )
+            assert (
+                Decimal(value) == db_value
+            ), f"Некорректное решение: {value} != {db_value}. Поле: {values.uin} определение: {values.definition}"
+
+            continue
         assert (
-            value == values.value.replace(",", ".")
-            if is_convert_str_to_float(values.value)
-            else value == values.value
+            value == values.value
         ), f"Некорректное решение: {value} != {values.value}. Поле: {values.uin} определение: {values.definition}"
 
 
@@ -172,7 +190,3 @@ def is_convert_str_to_float(value: str) -> bool:
         return True
     except:
         return False
-
-
-def convert_str_to_float(value: str) -> float:
-    return float(value)
