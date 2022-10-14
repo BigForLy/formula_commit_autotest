@@ -14,6 +14,7 @@ from factory import (
     ConsistencyField,
 )
 from consts import (
+    EXCEPTIONS,
     PROPERTIES_FIELD_ABSOLUTE_DIFFERENCE,
     PROPERTIES_FIELD_CONSISTENCY,
     PROPERTIES_FIELD_INFELICITY,
@@ -38,6 +39,9 @@ def get_field(arg: Dict[str, Any]):  # static factory method
                 value="",
                 round_to=int(arg.get("round")),
                 is_required=True if arg["not_is_null"] == "True" else False,
+                is_round_with_zeros=True
+                if arg["rounding_with_zeros"] == "True"
+                else False,
             )
         }
     elif type_ == "field_with_string":
@@ -53,18 +57,24 @@ def get_field(arg: Dict[str, Any]):  # static factory method
         value_field_properties = {
             "primary_key": arg["primary_key"],
             "is_required": False,
+            "is_round_with_zeros": True
+            if arg["rounding_with_zeros"] == "True"
+            else False,
         }
         absolute_difference_properties = {
             "primary_key": arg["primary_key"],
             "is_required": False,
+            "is_round_with_zeros": True,
         }
         consistency_field_properties = {
             "primary_key": arg["primary_key"],
             "is_required": False,
+            "is_round_with_zeros": True,
         }
         infelicity_field_properties = {
             "primary_key": arg["primary_key"],
             "is_required": False,
+            "is_round_with_zeros": True,
         }
 
         for name, value in arg.items():
@@ -115,19 +125,7 @@ def get_method_fields(queryset) -> Dict[str, Any]:
 def checked_func(session, probes, method_fields, uin_method_ver):
     for probe in probes:
         assert probe.uin is not None, "probe_uin is None"
-        if uin_method_ver == "b2fdc65d-6c4e-11e7-8fb2-00ffb44a812c" and probe.uin in (
-            # Некорректное решение: 2.7 != 2.8 - ошибка в округлении mysql
-            b"ebe23667-fa51-11eb-9f29-00155dc7502a",
-            # Деление на 0, кроме того данные некорректно записаны в базу,
-            # нехватает полей для второго определения
-            b"eaed4828-fa51-11eb-9f29-00155dc7502a",
-            # Нехватает поля для первого определения
-            b"eae97ba7-fa51-11eb-9f29-00155dc7502a",
-            # Нехватает полей, некорректные данные
-            b"eadfa778-fa51-11eb-9f29-00155dc7502a",
-            # Что-то не то с результатом, он в базе 0
-            b"eadbeb4b-fa51-11eb-9f29-00155dc7502a",
-        ):
+        if uin_method_ver in EXCEPTIONS and probe.uin in EXCEPTIONS[uin_method_ver]:
             continue
         check_values_in_probe(session, probe, method_fields, uin_method_ver)
     print(f"Безошибочных проверок: {check_values_in_probe.n_count}")
@@ -145,8 +143,7 @@ def check_values_in_probe(session, probe, method_fields, uin_method_ver):
             field.value = value.value
             field.primary_key = (field.primary_key, value.definition)
             fields.append(field)
-        formula = FormulaCalculation(fields)
-        results = formula.calc()
+        results = FormulaCalculation(fields).calc()
         check_fields_result(method_values, results)
     except Exception as exc:
         message = f"Ошибка в версии метода: {uin_method_ver}, проба: {probe.uin}"
@@ -160,6 +157,8 @@ def check_values_in_probe(session, probe, method_fields, uin_method_ver):
 def check_fields_result(method_values, results):
     for values in method_values:
         value = results[(values.uin, values.definition)]
+        if values.value is None and value == "None":
+            continue
         assert (
             value == values.value.replace(",", ".")
             if is_convert_str_to_float(values.value)
